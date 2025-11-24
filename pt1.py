@@ -1,11 +1,12 @@
 import math
 import numpy as np 
+from matplotlib import pyplot as plt
 
 kB = 1.380 * 10**-23
 T = 300
 nu = 1*10**-3
 R = 1 * 10**-6
-T_tot = 10000
+T_tot = 10000 
 dt = 2 * 10**-2
 x0 = 0
 y0 = 0 
@@ -87,3 +88,27 @@ for j in range(n_vers):
         y[j, i + 1] = y[j, i] + v * dt * np.sin(phi[j, i]) + c_noise_y * rn[1, i]
         phi[j, i + 1] = phi[j, i] + w_list[j]* dt + c_noise_phi * rn[2, i]
 
+plt.figure(figsize=(10,10))
+plt.plot(x[0][0:int(np.floor(2*tau_R/dt))], y[0][0:int(np.floor(tau_R/dt))], '-', linewidth=1, color='r', label = "w=0")
+plt.plot(x[1][0:int(np.floor(2*tau_R/dt))], y[1][0:int(np.floor(tau_R/dt))], '-', linewidth=1, color='b', label = "w=(1/2)*pi")
+plt.plot(x[2][0:int(np.floor(2*tau_R/dt))], y[2][0:int(np.floor(tau_R/dt))], '-', linewidth=1, color='g', label = "w=pi")
+plt.plot(x[3][0:int(np.floor(2*tau_R/dt))], y[3][0:int(np.floor(tau_R/dt))], '-', linewidth=1, color='y', label = "w=(3/2)*pi")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.title("Trajectories for different values of w")
+plt.show()
+
+time = np.arange(0, T_tot, dt)
+plt.figure(figsize=(10,10))
+plt.plot(time[0:int(np.floor(2*tau_R/dt))], phi[0][0:int(np.floor(tau_R/dt))], '-', linewidth=1, color='r', label = "w=0")
+plt.plot(time[0:int(np.floor(2*tau_R/dt))], phi[1][0:int(np.floor(tau_R/dt))], '-', linewidth=1, color='b', label = "w=(1/2)*pi")
+plt.plot(time[0:int(np.floor(2*tau_R/dt))], phi[2][0:int(np.floor(tau_R/dt))], '-', linewidth=1, color='g', label = "w=pi")
+plt.plot(time[0:int(np.floor(2*tau_R/dt))], phi[3][0:int(np.floor(tau_R/dt))], '-', linewidth=1, color='y', label = "w=(3/2)*pi")
+plt.xlabel("time")
+plt.ylabel("phi")
+plt.legend()
+plt.title("phi over time for different values of w")
+plt.show()
+
+
+print(f"tau_R is {tau_R} nanoseconds, whcih is {tau_R/(1*10^9)} seconds") 
