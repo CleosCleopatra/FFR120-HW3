@@ -203,6 +203,12 @@ delta_pos = 5 * dt  # Positive delay. More stable clustering.
 delta_neg = - 5 * dt  # Negative delay. Dispersal.
 #ad
 delta_arr = np.full(N_part, delta_pos)
+delta_arr[:N_neg] = delta_neg
+
+#ad
+n_delay_pos = int(abs(delta_pos) / dt)
+n_delay_neg = int(abs(delta_neg) / dt)
+max_mem = max(n_delay_pos, n_delay_neg)
 
 
 
@@ -215,14 +221,20 @@ y = (np.random.rand(N_part) - 0.5) * L  # in [-L/2, L/2]
 # Random orientation.
 phi = 2 * (np.random.rand(N_part) - 0.5) * np.pi  # in [-pi, pi]
 
+
+
+#ad
+x0 = x.copy() #initial config
+y0 = y.copy()
 # Coefficients for the finite difference solution.
-c_noise_phi = np.sqrt(2 * dt / tau)
+#c_noise_phi = np.sqrt(2 * dt / tau)
 
 I_ref = calculate_intensity(x, y, I0, r0, L, r_c)
 
-if delta < 0:
-    # Negative delay.
-    n_fit = int(- delta / dt)  # Delay in units of time steps.
+
+
+if n_delay_pos > 0:
+    n_fit = int(n_delay_pos / dt)  # Delay in units of time steps.
     I_fit = np.zeros([n_fit, N_part])
     t_fit = np.arange(n_fit) * dt
     dI_dt = np.zeros(N_part)
@@ -230,9 +242,8 @@ if delta < 0:
     for i in range(n_fit):
         I_fit[i, :] += I_ref   
         
-if delta > 0:
-    # Positive delay.
-    n_delay = int(delta / dt)  # Delay in units of time steps.
+if n_delay_neg < 0:
+    n_delay = int(-n_delay_neg / dt)  # Delay in units of time steps.
     I_memory = np.zeros([n_delay, N_part])
     # Initialize.
     for i in range(n_delay):
@@ -240,23 +251,30 @@ if delta > 0:
     
 
 
-rp = r0 / 3
-vp = rp  # Length of the arrow indicating the velocity direction.
-line_width = 1  # Width of the arrow line.
+#rp = r0 / 3
+#vp = rp  # Length of the arrow indicating the velocity direction.
+#line_width = 1  # Width of the arrow line.
 
 
 
-    
 
 
-step = 0
-
-
-for step in range(T_tot):
+for step in range(n_steps):
     
     # Calculate current I.
     I_particles = calculate_intensity(x, y, I0, r0, L, r_c)
+
+    #ad
+    I_effective = np.zeros(N_part)
     
+    
+    if n_delay_pos > 0:
+        I_memory = np.roll(I_memory, -1, axis = 0)
+        I_memory[-1,:] = I_particles
+    #?
+    if n_fit > 0:
+        I_fit = np.roll(I_fit)
+
     if delta < 0:
         # Estimate the derivative of I linear using the last n_fit values.
         # Update I_fit.
