@@ -59,89 +59,46 @@ def diffuse_spread_recover(x, y, status, d, beta, gamma, L):
 
 
 N_part = 1000  # Total agent population.
-d = 0.8  # Diffusion probability.
-beta = 0.6  # Infection spreading probability.
-gamma = 0.01  # Recovery probability.
+d = 0.9  # Diffusion probability.
 L = 100  # Side of the lattice.
 
 I0 = 10  # Initial number of infected agents.
-
-# Initialize agents position.
-x = np.random.randint(L, size=N_part)
-y = np.random.randint(L, size=N_part)
-
-# Initialize agents status.
-status = np.zeros(N_part)
-status[0:I0] = 1
-
-
-N_part = 1000  # Total agent population.
-d = 0.8  # Diffusion probability.
-
 
 betas = [0.8, 0.1]  # Infection spreading probability.
-gamma = [0.02, 0.01]  # Recovery probability.
-L = 100  # Side of the lattice.
+gammas = [0.02, 0.01]  # Recovery probability.
 
-I0 = 10  # Initial number of infected agents.
-
-# Initialize agents position.
-x = np.random.randint(L, size=N_part)
-y = np.random.randint(L, size=N_part)
-
-# Initialize agents status.
-status = np.zeros(N_part)
-status[0:I0] = 1
-
-step = 0
-
-S = [[],[]]  # Keeps track of the susceptible agents.
-I = [[],[]]  # Keeps track of the infectious agents.
-R = [[],[]]  # Keeps track of the recovered agents.
-S[0].append(N_part - I0)
-S[1].append(N_part - I0)
-I[0].append(I0)
-I[1].append(I0)
-R[0].append(0)
-R[0].append(1)
-
-running = True  # Flag to control the loop.
-while running:
-    for i in range(len(betas)):
-        x, y, status = diffuse_spread_recover(x, y, status, d, beta, gamma, L)  
-    
-        S[i].append(np.size(np.where(status == 0)[0]))
-        I[i].append(np.size(np.where(status == 1)[0]))
-        R[i].append(np.size(np.where(status == 2)[0]))
-    
-    step += 1
-    if I[-1] == 0: 
-        running = False
-        
-print('Done.')
-
-
-
-t = np.array(np.arange(len(S)))
-S1_agents = np.array(S[0]) 
-I1_agents = np.array(I[0]) 
-R1_agents = np.array(R[0]) 
-
-S2_agents = np.array(S[1]) 
-I2_agents = np.array(I[1]) 
-R2_agents = np.array(R[1]) 
 
 import matplotlib.pyplot as plt
 
-plt.plot(t, S1_agents, '-', label='S1')
-plt.plot(t, I1_agents, '-', label='I1')
-plt.plot(t, R1_agents, '-', label='R1')
+step = 0
+n_reps = 6
 
-plt.plot(t, S2_agents, '-', label='S2')
-plt.plot(t, I2_agents, '-', label='I2')
-plt.plot(t, R2_agents, '-', label='R2')
-plt.legend()
-plt.title('Course of the disease')
+plt.figure(figsize=(15, 6))
+for rep in range(n_reps):
+    print(f"rep is {rep}")
+    x = np.random.randint(L, size=N_part)
+    y = np.random.randint(L, size=N_part)
+    status = np.zeros(N_part)
+    status[0:I0] = 1
+    S, I, R = [N_part-I0], [I0], [0]
+    running = True  # Flag to control the loop.
+    while running:
+        x, y, status = diffuse_spread_recover(x, y, status, d, betas[0], gammas[0], L)  
+    
+        S.append(np.size(np.where(status == 0)[0]))
+        I.append(np.size(np.where(status == 1)[0]))
+        R.append(np.size(np.where(status == 2)[0]))
+        if I[-1] == 0: 
+            running = False
+
+    t = np.array(np.arange(len(S)))
+    plt.plot(t, S, '-', color= 'r', label=f'S for rep{rep+1}')
+    plt.plot(t, I, '-', color= 'b', label=f"i for rep{rep + 1}")
+    plt.plot(t, R, '-', color= 'g', label=f"R fpr rep {rep +1}")
+
+
+plt.legend(loc='upper left', bbox_to_anchor=(0.95, 1), borderaxespad=0)
+plt.title('Course of the disease, condition 1')
 plt.xlabel('step')
 plt.ylabel('S, I, R ')
 plt.show()
