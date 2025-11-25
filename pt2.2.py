@@ -170,14 +170,14 @@ t_fit = np.arange(n_delta_neg) * dt
 for i in range(n_delta_neg):
     I_fit[i] += I_ref  
 #ad
-pos_idx = 0 #Neg robot
+pos_idx = 0
 traj_pos_x = np.zeros(n_steps + 1)
 traj_pos_y = np.zeros(n_steps + 1)
 traj_pos_x[0] = x[pos_idx]
 traj_pos_y[0] = y[pos_idx] #Initial positions 
 
-big_x = np.zeros((n_steps, N_part))
-big_y = np.zeros((n_steps, N_part))
+big_x = np.zeros((n_steps+1, N_part))
+big_y = np.zeros((n_steps+1, N_part))
 big_x[0,:] = x
 big_y[0, :] = y
 
@@ -226,8 +226,8 @@ for step in range(n_steps):
     traj_pos_x[step + 1] = x[pos_idx]
     traj_pos_y[step + 1] = y[pos_idx]
     
-    big_x[step,:] = x
-    big_y[step, :] = y
+    big_x[step+1,:] = x
+    big_y[step+1, :] = y
     
     
 print(f"x is {x}")
@@ -259,40 +259,6 @@ plt.legend()
 plt.title('Initial in green and final in red')
 plt.show()
 
-
-
-
-
-
-
-
-
-
-segments_x = []
-segments_y = []
-current_x = [x[0]]
-current_y = [y[0]]
-
-for i in range(1, len(x)):
-    dx = traj_pos_x_masked[i] - traj_pos_x_masked[i-1]
-    dy = traj_pos_y_masked[i] - traj_pos_y_masked[i-1]
-    if abs(dx) > L/2 or abs(dy) > L/2:
-        # finish current segment
-        segments_x.append(current_x)
-        segments_y.append(current_y)
-        # start new one
-        current_x = [x[i]]
-        current_y = [y[i]]
-    else:
-        current_x.append(x[i])
-        current_y.append(y[i])
-
-# add last segment
-segments_x.append(current_x)
-segments_y.append(current_y)
-
-for sx, sy in zip(segments_x, segments_y):
-    plt.plot(sx, sy, '-', linewidth=1)
 
 
 
