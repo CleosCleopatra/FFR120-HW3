@@ -58,7 +58,7 @@ def diffuse_spread_recover(x, y, status, d, beta, gamma, L):
     return x, y, status
 
 
-N_part = 1000  # Total agent population.
+N_part = 2000  # Total agent population.
 d = 0.9  # Diffusion probability.
 L = 100  # Side of the lattice.
 
@@ -92,13 +92,48 @@ for rep in range(n_reps):
             running = False
 
     t = np.array(np.arange(len(S)))
-    plt.plot(t, S, '-', color= 'r', label=f'S for rep{rep+1}')
-    plt.plot(t, I, '-', color= 'b', label=f"i for rep{rep + 1}")
-    plt.plot(t, R, '-', color= 'g', label=f"R fpr rep {rep +1}")
+    plt.plot(t, S, '-', label=f'S for rep{rep+1}')
+    plt.plot(t, I, '-', label=f"i for rep{rep + 1}")
+    plt.plot(t, R, '-', label=f"R fpr rep {rep +1}")
 
 
 plt.legend(loc='upper left', bbox_to_anchor=(0.95, 1), borderaxespad=0)
 plt.title('Course of the disease, condition 1')
+plt.xlabel('step')
+plt.ylabel('S, I, R ')
+plt.show()
+
+
+
+
+
+#Second condition
+plt.figure(figsize=(15, 6))
+for rep in range(n_reps):
+    print(f"rep is {rep}")
+    x = np.random.randint(L, size=N_part)
+    y = np.random.randint(L, size=N_part)
+    status = np.zeros(N_part)
+    status[0:I0] = 1
+    S, I, R = [N_part-I0], [I0], [0]
+    running = True  # Flag to control the loop.
+    while running:
+        x, y, status = diffuse_spread_recover(x, y, status, d, betas[1], gammas[1], L)  
+    
+        S.append(np.size(np.where(status == 0)[0]))
+        I.append(np.size(np.where(status == 1)[0]))
+        R.append(np.size(np.where(status == 2)[0]))
+        if I[-1] == 0: 
+            running = False
+
+    t = np.array(np.arange(len(S)))
+    plt.plot(t, S, '-', label=f'S for rep{rep+1}')
+    plt.plot(t, I, '-', label=f"i for rep{rep + 1}")
+    plt.plot(t, R, '-', label=f"R fpr rep {rep +1}")
+
+
+plt.legend(loc='upper left', bbox_to_anchor=(0.95, 1), borderaxespad=0)
+plt.title('Course of the disease, condition 2')
 plt.xlabel('step')
 plt.ylabel('S, I, R ')
 plt.show()
