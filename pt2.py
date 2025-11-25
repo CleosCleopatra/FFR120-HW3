@@ -1,48 +1,10 @@
 import math
 import numpy as np 
+import matplotlib.pyplot as plt
+from functools import reduce
 
-def evolution_GI(x0, y0, phi0, v_inf, v0, Ic, I0, r0, tau, dt, duration):
-    """
-    Function to generate the trajectory of a light-sensitive robot in a Gaussian
-    light intensity zone.
-    
-    Parameters
-    ==========
-    x0, y0 : Initial position [m].
-    phi0 : Initial orientation [rad].
-    v_inf : Self-propulsion speed at I=0 [m/s]
-    v0 : Self-propulsion speed at I=I0 [m/s]
-    Ic : Intensity scale over which the speed decays.
-    I0 : Maximum intensity.
-    r0 : Standard deviation of the Gaussian intensity.
-    tau : Time scale of the rotational diffusion coefficient [s]
-    dt : Time step for the numerical solution [s].
-    duration : Total time for which the solution is computed [s].
-    """
-        
-    # Coefficients for the finite difference solution.
-    c_noise_phi = np.sqrt(2 / tau * dt)
+np.random.seed(14)
 
-    N = math.ceil(duration / dt)  # Number of time steps.
-
-    x = np.zeros(N)
-    y = np.zeros(N)
-    phi = np.zeros(N)
-
-    rn = np.random.normal(0, 1, N - 1)
-    
-    x[0] = x0
-    y[0] = y0
-    phi[0] = phi0
-
-    for i in range(N - 1):
-        I =  I0 * np.exp(- (x[i] ** 2 + y[i] ** 2) / r0 ** 2)
-        v = v_inf + (v0 - v_inf) * np.exp(- I / Ic) 
-        x[i + 1] = x[i] + v * dt * np.cos(phi[i])
-        y[i + 1] = y[i] + v * dt * np.sin(phi[i])
-        phi[i + 1] = phi[i] + c_noise_phi * rn[i]
-
-    return x, y, phi
 
 
 def replicas(x, y, L):
@@ -115,7 +77,7 @@ def calculate_intensity(x, y, I0, r0, L, r_c):
             np.where(y + r_c > L / 2)[0], 
             np.where(y - r_c < - L / 2)[0],
             np.where(x + r_c > L / 2)[0],
-            np.where(x - r_c > - L / 2)[0]
+            np.where(x - r_c < - L / 2)[0] #?
         )
     )
 
@@ -172,7 +134,7 @@ def calculate_intensity(x, y, I0, r0, L, r_c):
     return I_particle
 
 
-T_tot = 1800.0
+T_tot = 200 #Switch to 1800
 dt = 0.05
 n_steps = int(T_tot / dt)
 
@@ -198,18 +160,11 @@ L =3  # Side of the arena[m].
 
 N_neg = 1
 
-delta = 0  # No delay. Tends to cluster.
 delta_pos = 5 * dt  # Positive delay. More stable clustering.
 delta_neg = - 5 * dt  # Negative delay. Dispersal.
 #ad
 delta_arr = np.full(N_part, delta_pos)
 delta_arr[:N_neg] = delta_neg
-
-#ad
-n_delay_pos = int(abs(delta_pos) / dt)
-n_delay_neg = int(abs(delta_neg) / dt)
-max_mem = max(n_delay_pos, n_delay_neg)
-
 
 
 # Initialization.
@@ -221,92 +176,101 @@ y = (np.random.rand(N_part) - 0.5) * L  # in [-L/2, L/2]
 # Random orientation.
 phi = 2 * (np.random.rand(N_part) - 0.5) * np.pi  # in [-pi, pi]
 
-
-
 #ad
-x0 = x.copy() #initial config
-y0 = y.copy()
+x_init = x.copy()
+y_init = y.copy()
+
 # Coefficients for the finite difference solution.
 #c_noise_phi = np.sqrt(2 * dt / tau)
 
 I_ref = calculate_intensity(x, y, I0, r0, L, r_c)
 
+#ad
+n_pos = N_part- N_neg
+n_neg = N_neg
 
+#ad
+#For positive robot
+n_delta_pos = int(delta_pos/dt)
+I_memory = np.zeros([n_delta_pos, N_part])
+for i in range(n_delta_pos):
+    I_memory[i, :] += I_ref 
 
-if n_delay_pos > 0:
-    n_fit = int(n_delay_pos / dt)  # Delay in units of time steps.
-    I_fit = np.zeros([n_fit, N_part])
-    t_fit = np.arange(n_fit) * dt
-    dI_dt = np.zeros(N_part)
-    # Initialize.
-    for i in range(n_fit):
-        I_fit[i, :] += I_ref   
-        
-if n_delay_neg < 0:
-    n_delay = int(-n_delay_neg / dt)  # Delay in units of time steps.
-    I_memory = np.zeros([n_delay, N_part])
-    # Initialize.
-    for i in range(n_delay):
-        I_memory[i, :] += I_ref   
-    
-
+n_delta_neg = int(-delta_neg / dt)
+I_fit = np.zeros((n_delta_neg, N_part))
+t_fit = np.arange(n_delta_neg) * dt
+#dI_dt = np.zeros(N_part)
+# Initialize.
+for i in range(n_delta_neg):
+    I_fit[i] += I_ref  
 
 #rp = r0 / 3
 #vp = rp  # Length of the arrow indicating the velocity direction.
 #line_width = 1  # Width of the arrow line.
 
-
-
-
+#ad
+neg_idx = 0 #Neg robot
+traj_neg_x = np.zeros(n_steps + 1)
+traj_neg_y = np.zeros(n_steps + 1)
+traj_neg_x[0] = x[neg_idx]
+traj_neg_y[0] = y[neg_idx] #Initial positions
 
 for step in range(n_steps):
+    print(step)
     
     # Calculate current I.
     I_particles = calculate_intensity(x, y, I0, r0, L, r_c)
+    
+    I_memory = np.roll(I_memory, -1, axis = 0)
+    I_memory[-1] = I_particles
+    I_delay_pos = I_memory[0]
 
+    I_fit = np.roll(I_fit, -1, axis = 0)
+    I_fit[-1] = I_particles
+    
     #ad
     I_effective = np.zeros(N_part)
-    
-    
-    if n_delay_pos > 0:
-        I_memory = np.roll(I_memory, -1, axis = 0)
-        I_memory[-1,:] = I_particles
-    #?
-    if n_fit > 0:
-        I_fit = np.roll(I_fit)
-
-    if delta < 0:
-        # Estimate the derivative of I linear using the last n_fit values.
-        # Update I_fit.
-        I_fit = np.roll(I_fit, -1, axis=0)
-        I_fit[-1, :] = I_particles
-        # Fit to determine the slope.
-        for j in range(N_part):
+    for j in range(N_part):
+        d = delta_arr[j]
+        if d > 0:
+            
+            I_effective[j] = I_delay_pos[j]
+        elif d < 0:
             p = np.polyfit(t_fit, I_fit[:, j], 1)
-            dI_dt[j] = p[0]
-        # Determine forecast. Remember that here delta is negative.
-        I = I_particles - delta * dI_dt  
-        I[np.where(I < 0)[0]] = 0
-    elif delta > 0:
-        # Update I_memory.
-        I_memory = np.roll(I_memory, -1, axis=0)
-        I_memory[-1, :] = I_particles    
-        I = I_memory[0, :]
-    else:
-        I = I_particles
-       
+            slope = p[0]
+            I_pred = I_particles[j] - d * slope
+            I_effective[j] = max(I_pred, 0.0)
+        else:
+            I_effective[j] = I_particles[j]
+
     # Calculate new positions and orientations. 
-    v = v_inf + (v0 - v_inf) * np.exp(- I / Ic) 
+    v = v_inf + (v0 - v_inf) * np.exp(- I_effective / Ic) 
     nx = x + v * dt * np.cos(phi)
     ny = y + v * dt * np.sin(phi)
-    nphi = phi + c_noise_phi * np.random.normal(0, 1, N_part)
+    nphi = phi + c_noise_phi_prefactor * np.random.normal(0, 1, N_part)
 
 
     # Apply pbc.
     nx, ny = pbc(nx, ny, L)
                 
-                    
-    step += 1
+
     x[:] = nx[:]
     y[:] = ny[:]
-    phi[:] = nphi[:]  
+    phi[:] = nphi[:] 
+    traj_neg_x[step + 1] = x[neg_idx]
+    traj_neg_y[step + 1] = y[neg_idx]
+
+
+plt.figure(figsize=(6,6))
+plt.scatter(x_init, y_init, c='C0', label = 'initial')
+plt.scatter(x,y, c='C1', label = 'final')
+
+plt.plot(traj_neg_x, traj_neg_y, label= 'neg-delay trajectory')
+plt.scatter(traj_neg_x[0], traj_neg_y[0], marker='x', c='green', label='neg start')
+plt.scatter(traj_neg_x[-1], traj_neg_y[-1], marker='x', c = 'red', label = 'neg end')
+
+plt.xlim(-L/2, L/2)
+plt.ylim(-L/2, L/2)
+plt.legend()
+plt.title('Initial in green and final in red')
+plt.show()
