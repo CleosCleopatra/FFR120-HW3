@@ -1,4 +1,3 @@
-import math
 import numpy as np 
 import matplotlib.pyplot as plt
 from functools import reduce
@@ -7,15 +6,7 @@ np.random.seed(14)
 
 
 
-def replicas(x, y, L):
-    """
-    Function to generate replicas of a single particle.
-    
-    Parameters
-    ==========
-    x, y : Position.
-    L : Side of the squared arena.
-    """    
+def replicas(x, y, L):   
     xr = np.zeros(9)
     yr = np.zeros(9)
 
@@ -27,16 +18,7 @@ def replicas(x, y, L):
     return xr, yr
 
 
-def pbc(x, y, L):
-    """
-    Function to enforce periodic boundary conditions on the positions.
-    
-    Parameters
-    ==========
-    x, y : Position.
-    L : Side of the squared arena.
-    """   
-    
+def pbc(x, y, L): 
     outside_left = np.where(x < - L / 2)[0]
     x[outside_left] = x[outside_left] + L
 
@@ -55,18 +37,6 @@ def pbc(x, y, L):
 from functools import reduce
 
 def calculate_intensity(x, y, I0, r0, L, r_c):
-    """
-    Function to calculate the intensity seen by each particle.
-    
-    Parameters
-    ==========
-    x, y : Positions.
-    r0 : Standard deviation of the Gaussian light intensity zone.
-    I0 : Maximum intensity of the Gaussian.
-    L : Dimension of the squared arena.
-    r_c : Cut-off radius. Pre-set it around 3 * r0. 
-    """
-    
     N = np.size(x)
 
     I_particle = np.zeros(N)  # Intensity seen by each particle.
@@ -134,7 +104,7 @@ def calculate_intensity(x, y, I0, r0, L, r_c):
     return I_particle
 
 
-T_tot = 200 #Switch to 1800
+T_tot = 1800 # change to 1800 ? 
 dt = 0.05
 n_steps = int(T_tot / dt)
 
@@ -180,9 +150,6 @@ phi = 2 * (np.random.rand(N_part) - 0.5) * np.pi  # in [-pi, pi]
 x_init = x.copy()
 y_init = y.copy()
 
-# Coefficients for the finite difference solution.
-#c_noise_phi = np.sqrt(2 * dt / tau)
-
 I_ref = calculate_intensity(x, y, I0, r0, L, r_c)
 
 #ad
@@ -199,21 +166,20 @@ for i in range(n_delta_pos):
 n_delta_neg = int(-delta_neg / dt)
 I_fit = np.zeros((n_delta_neg, N_part))
 t_fit = np.arange(n_delta_neg) * dt
-#dI_dt = np.zeros(N_part)
 # Initialize.
 for i in range(n_delta_neg):
     I_fit[i] += I_ref  
-
-#rp = r0 / 3
-#vp = rp  # Length of the arrow indicating the velocity direction.
-#line_width = 1  # Width of the arrow line.
-
 #ad
 neg_idx = 0 #Neg robot
 traj_neg_x = np.zeros(n_steps + 1)
 traj_neg_y = np.zeros(n_steps + 1)
 traj_neg_x[0] = x[neg_idx]
-traj_neg_y[0] = y[neg_idx] #Initial positions
+traj_neg_y[0] = y[neg_idx] #Initial positions 
+
+big_x = np.zeros((n_steps, N_part))
+big_y = np.zeros((n_steps, N_part))
+big_x[0,:] = x
+big_y[0, :] = y
 
 for step in range(n_steps):
     print(step)
@@ -259,13 +225,31 @@ for step in range(n_steps):
     phi[:] = nphi[:] 
     traj_neg_x[step + 1] = x[neg_idx]
     traj_neg_y[step + 1] = y[neg_idx]
+    
+    big_x[step,:] = x
+    big_y[step, :] = y
+    
+    
+print(f"x is {x}")
+    
+
+traj_neg_x_plot = traj_neg_x.copy()
+traj_neg_y_plot = traj_neg_y.copy()
+
+# Detect large jumps (crossing boundary)
+jump_idx = np.where(np.abs(np.diff(traj_neg_x)) > L/2)[0]
+mask = np.zeros_like(traj_neg_x_plot, dtype=bool)
+mask[jump_idx + 1] = True
+
+traj_neg_x_masked = np.ma.masked_where(mask, traj_neg_x_plot)
+traj_neg_y_masked = np.ma.masked_where(mask, traj_neg_y_plot)
 
 
 plt.figure(figsize=(6,6))
 plt.scatter(x_init, y_init, c='C0', label = 'initial')
 plt.scatter(x,y, c='C1', label = 'final')
 
-plt.plot(traj_neg_x, traj_neg_y, label= 'neg-delay trajectory')
+plt.plot(traj_neg_x_masked, traj_neg_y_masked, label= 'neg-delay trajectory')
 plt.scatter(traj_neg_x[0], traj_neg_y[0], marker='x', c='green', label='neg start')
 plt.scatter(traj_neg_x[-1], traj_neg_y[-1], marker='x', c = 'red', label = 'neg end')
 
@@ -273,4 +257,103 @@ plt.xlim(-L/2, L/2)
 plt.ylim(-L/2, L/2)
 plt.legend()
 plt.title('Initial in green and final in red')
+plt.show()
+
+
+
+
+
+
+
+
+
+
+segments_x = []
+segments_y = []
+current_x = [x[0]]
+current_y = [y[0]]
+
+for i in range(1, len(x)):
+    dx = traj_neg_x_masked[i] - traj_neg_x_masked[i-1]
+    dy = traj_neg_y_masked[i] - traj_neg_y_masked[i-1]
+    if abs(dx) > L/2 or abs(dy) > L/2:
+        # finish current segment
+        segments_x.append(current_x)
+        segments_y.append(current_y)
+        # start new one
+        current_x = [x[i]]
+        current_y = [y[i]]
+    else:
+        current_x.append(x[i])
+        current_y.append(y[i])
+
+# add last segment
+segments_x.append(current_x)
+segments_y.append(current_y)
+
+for sx, sy in zip(segments_x, segments_y):
+    plt.plot(sx, sy, '-', linewidth=1)
+
+
+
+
+
+def convert2RBG(I_profile, RGB0, RGB1):
+    """
+    Function to convert the 2 dimensional numpy array into a RGB image.
+    
+    Parameters
+    ==========
+    I_profile : Intensity profile.
+    RGB0 : Components R, G, B of the chosen color shade for minimum I_profile.
+    RGB1 : Components R, G, B of the chosen color shade for maximum I_profile.
+    """
+    
+    [n_rows, n_cols] = I_profile.shape
+    
+    I_RGB = np.zeros([n_rows, n_cols, 3])
+    
+    # Set I_profile between 0 and 1
+    I_profile -= np.amin(I_profile)    
+    I_profile /= np.amax(I_profile)  
+    
+    for c in range(3):
+        I_RGB[:, :, c] = I_profile * RGB1[c] + (1 - I_profile) * RGB0[c]
+
+    return I_RGB
+
+# Define grid over the square arena
+dx = 0.05   # pixel size in meters
+dy = 0.05
+x_lin = np.arange(-L/2, L/2+dx, dx)
+y_lin = np.arange(-L/2, L/2+dy, dy)
+x_coo, y_coo = np.meshgrid(x_lin, y_lin)
+Lx, Ly = x_coo.shape
+
+# Initialize exploration map
+exploration = np.zeros((Lx, Ly))
+
+# Accumulate visits: loop over all robots and all timesteps
+for t in range(n_steps):
+    for n in range(N_part):
+        # Convert robot position to pixel index
+        ix = int((big_x[t,n] +L/2) / dx)
+        iy = int((big_y[t,n] +L/2)/ dy)
+        if 0 <= ix < Lx and 0 <= iy < Ly:
+            exploration[iy, ix] += 1
+
+# Convert to RGB image using your function
+RGB0 = [1.0, 1.0, 1.0]   # white for min
+RGB1 = [0.3, 0.3, 1.0]   # bluish for max
+exploration_img = convert2RBG(exploration, RGB0, RGB1)
+
+from matplotlib.colors import LogNorm
+# Plot exploration profile
+plt.figure(figsize=(6,6))
+plt.imshow(exploration, origin='lower', extent=[-L/2,L/2,-L/2,L/2], norm=LogNorm())
+plt.title("Exploration Histogram (All Robots)")
+plt.xlabel("x [m]")
+plt.ylabel("y [m]")
+plt.axis('equal')
+plt.colorbar(label="Visits")
 plt.show()
